@@ -84,6 +84,7 @@ namespace EcoTest.Models
 
         public List<Abonnement> ForbindData()
         {
+            //
             // Konverter e-conomic dataobjekter til "egne" dataobjekter. Alt data lægges i opslag og køres kun igennem een gang ved konvertering.
             Dictionary<int, Abonnement> abonnementopslag = new Dictionary<int, Abonnement>();
             Dictionary<string, Debitor> debitoropslag = new Dictionary<string, Debitor>();
