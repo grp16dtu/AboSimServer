@@ -136,7 +136,10 @@ namespace EcoTest.Models
         {
             // Data data nu er linket opstår der ikke performance overhead ved generering af transaktioner.
             var transaktioner = new List<Transaktion>();
-            var dato = DateTime.Now;
+            var simuleringsdato = DateTime.Now;
+            decimal produktPris;
+            decimal? produktAntal;
+            decimal inputIndex = 1;
 
             for (int i = 0; i < antalMndr; i++) 
             {
@@ -144,17 +147,50 @@ namespace EcoTest.Models
                 {
                     foreach (var varelinje in abonnement.Varelinjer)
                     {
-                        //bool harSpecielProduktPris = varelinje.SpecialPrice != null;
-
                         foreach (var abonnent in abonnement.Abonnenter)
                         {
-                            //bool harSpecielAbonnementPris = abonnent.SpecialPrice != null;
-                               
-                            transaktioner.Add(new Transaktion(dato.Year, dato.Month, abonnent.Debitor.Nummer, varelinje.Produkt.Nummer, varelinje.Antal, varelinje.Produkt.Salgpris));
+
+
+                            produktPris = varelinje.Produkt.Salgpris;
+
+                            // Tjek om varelinje har en særpris
+                            if (varelinje.Specielpris != null)
+                            {
+                                produktPris = Convert.ToDecimal(varelinje.Specielpris);
+                            }
+
+                            // Tjek om abonnent har særpris
+                            if(abonnent.Saerpris != null)
+                            {
+                                produktPris = Convert.ToDecimal(abonnent.Saerpris);
+                            }
+
+                            // Udregn produktpris med rabat
+                            if (abonnent.RabatSomProcent != null && !erDatoUdlobet(abonnent.DatoRabatudloeb, simuleringsdato))
+                            {
+                                produktPris = produktPris * (100 - Convert.ToDecimal(abonnent.RabatSomProcent)) / 100;
+                            }
+
+                            // Udregn produktpris med index
+                            if (abonnent.Prisindex != null)
+                            {
+                                produktPris = produktPris * inputIndex / Convert.ToDecimal(abonnent.Prisindex);
+                            }
+
+
+                            produktAntal = varelinje.Antal;
+
+                            // Gang op ift. Antalsfaktor
+                            if (abonnent.Antalsfaktor != null)
+                            {
+                                produktAntal = produktAntal * abonnent.Antalsfaktor;
+                            }
+
+                            transaktioner.Add(new Transaktion(simuleringsdato.Year, simuleringsdato.Month, abonnent.Debitor.Nummer, varelinje.Produkt.Nummer, produktAntal, produktPris));
                         }
                     }
                 }
-                dato = dato.AddMonths(1);
+                simuleringsdato = simuleringsdato.AddMonths(1);
             }
 
             return transaktioner;
@@ -179,6 +215,16 @@ namespace EcoTest.Models
         private DepartmentHandle[] hentAfdelingHandlers(IEnumerable<ProductData> produkterData)
         {
             return (from product in produkterData where product.DepartmentHandle != null select product.DepartmentHandle).ToArray();
-        }  
+        }
+
+        private bool erDatoUdlobet(DateTime? datoAtTjekke, DateTime aktuelDato)
+        {
+            if (datoAtTjekke == null)
+            {
+                return false;
+            }
+
+            return datoAtTjekke < aktuelDato;
+        }
     }
 }
