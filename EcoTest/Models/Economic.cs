@@ -94,7 +94,7 @@ namespace EcoTest.Models
 
             foreach (var abonnementData in _abonnementerData)
             {
-                abonnementopslag.Add(abonnementData.Id, new Abonnement(abonnementData.Id, abonnementData.Name, abonnementData.Number, abonnementData.CalendarYearBasis));
+                abonnementopslag.Add(abonnementData.Id, new Abonnement(abonnementData.Id, abonnementData.Name, abonnementData.Number, abonnementData.CalendarYearBasis, abonnementData.SubscriptionInterval.ToString(), abonnementData.Collection.ToString()));
             }
 
             foreach (var debitorData in _debitorerData)
@@ -149,8 +149,6 @@ namespace EcoTest.Models
                     {
                         foreach (var abonnent in abonnement.Abonnenter)
                         {
-
-
                             produktPris = varelinje.Produkt.Salgpris;
 
                             // Tjek om varelinje har en særpris

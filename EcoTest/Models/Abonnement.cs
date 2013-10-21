@@ -7,18 +7,20 @@ namespace EcoTest.Models
         public int Id { get; set; }
         public string Navn { get; set; }
         public int Nummer { get; set; }
-        // Interval
+        public string Interval { get; set; }
         public bool KalenderAar { get; set; }
-        //Opkraevning
+        public string Opkravning { get; set; }
         public List<Abonnent> Abonnenter { get; set; }
         public List<Varelinje> Varelinjer { get; set; }
 
-        public Abonnement(int id, string navn, int nummer,  bool kalenderAar)
+        public Abonnement(int id, string navn, int nummer,  bool kalenderAar, string interval, string opkraevning)
         {
             this.Id = id;
             this.Navn = navn;
             this.Nummer = nummer;
             this.KalenderAar = kalenderAar;
+            this.Interval = interval;
+            this.Opkravning = opkraevning;
 
             this.Abonnenter = new List<Abonnent>();
             this.Varelinjer = new List<Varelinje>();
