@@ -136,9 +136,11 @@ namespace EcoTest.Models
         {
             // Data data nu er linket opstår der ikke performance overhead ved generering af transaktioner.
             var transaktioner = new List<Transaktion>();
-            var simuleringsdatoStart = DateTime.Now;
-            var simuleringsdatoSlut = simuleringsdatoStart.AddMonths(1);
+
+            DateTime simuleringsdatoStart = DateTime.Now;
+            DateTime simuleringsdatoSlut = simuleringsdatoStart.AddMonths(antalMndr);
             DateTime simuleringsdatoAktuel;
+            
             decimal produktPris;
             decimal? produktAntal;
             decimal inputIndex = 1;
@@ -147,24 +149,24 @@ namespace EcoTest.Models
             {
                 simuleringsdatoAktuel = simuleringsdatoStart;
 
-                Console.WriteLine("Her er et abonnement");
+                /*
+                //Kalenderår
+                if (abonnement.KalenderAar)
+                    simuleringsdatoAktuel = new DateTime(simuleringsdatoAktuel.Year, simuleringsdatoAktuel.Month, 1);
+                 * */
+                
 
-                while(true)
+                Console.WriteLine(abonnement.Navn);
+
+                //Læg tid til før næste iteration
+                simuleringsdatoAktuel = tilfojTidTilSimuleringsdato(simuleringsdatoAktuel, abonnement.Interval);
+                while(simuleringsdatoAktuel <= simuleringsdatoSlut)
                 {
-                    //Læg tid til før næste iteration
-                    simuleringsdatoAktuel = tilfojTidTilSimuleringsdato(simuleringsdatoAktuel, abonnement.Interval);
-
-                    //Tjek om vi er forbi slutdato
-                    if (simuleringsdatoAktuel > simuleringsdatoSlut)
-                    {
-                        break;
-                    }
-
                     foreach (var varelinje in abonnement.Varelinjer)
                     {
                         foreach (var abonnent in abonnement.Abonnenter)
                         {
-                            Console.WriteLine("Her er en varelinje");
+                            Console.WriteLine(varelinje.Produkt.Navn);
 
                             produktPris = varelinje.Produkt.Salgpris;
 
@@ -204,11 +206,15 @@ namespace EcoTest.Models
                             transaktioner.Add(new Transaktion(simuleringsdatoAktuel.Year, simuleringsdatoAktuel.Month, abonnent.Debitor.Nummer, varelinje.Produkt.Nummer, produktAntal, produktPris));
                         }
                     }
+                    //Læg tid til før næste iteration
+                    simuleringsdatoAktuel = tilfojTidTilSimuleringsdato(simuleringsdatoAktuel, abonnement.Interval);
                 }
             }
 
             return transaktioner;
         }
+
+        //private decimal Spececialpris
 
        
         private ProductHandle[] hentProduktHandlers(IEnumerable<SubscriptionLineData> varelinjerData)

@@ -16,10 +16,10 @@ namespace EcoTest.Controllers
             Economic economic = new Economic(aftalenummer, brugernavn, kodeord);
             economic.HentData();
             List<Abonnement> forbundneAbonnementer = economic.ForbindData();
-            List<Transaktion> transaktioner = economic.GenererTransaktioner(forbundneAbonnementer, 1);
+            List<Transaktion> transaktioner = economic.GenererTransaktioner(forbundneAbonnementer, 2);
 
             MySQL mySql = new MySQL();
-            mySql.InsertTransactions(transaktioner);
+            //mySql.InsertTransactions(transaktioner);
 
 
                //Read transactions
