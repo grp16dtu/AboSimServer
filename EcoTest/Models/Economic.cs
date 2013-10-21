@@ -136,19 +136,36 @@ namespace EcoTest.Models
         {
             // Data data nu er linket opstår der ikke performance overhead ved generering af transaktioner.
             var transaktioner = new List<Transaktion>();
-            var simuleringsdato = DateTime.Now;
+            var simuleringsdatoStart = DateTime.Now;
+            var simuleringsdatoSlut = simuleringsdatoStart.AddMonths(1);
+            DateTime simuleringsdatoAktuel;
             decimal produktPris;
             decimal? produktAntal;
             decimal inputIndex = 1;
 
-            for (int i = 0; i < antalMndr; i++) 
+            foreach (var abonnement in abonnementer) 
             {
-                foreach (var abonnement in abonnementer) 
+                simuleringsdatoAktuel = simuleringsdatoStart;
+
+                Console.WriteLine("Her er et abonnement");
+
+                while(true)
                 {
+                    //Læg tid til før næste iteration
+                    simuleringsdatoAktuel = tilfojTidTilSimuleringsdato(simuleringsdatoAktuel, abonnement.Interval);
+
+                    //Tjek om vi er forbi slutdato
+                    if (simuleringsdatoAktuel > simuleringsdatoSlut)
+                    {
+                        break;
+                    }
+
                     foreach (var varelinje in abonnement.Varelinjer)
                     {
                         foreach (var abonnent in abonnement.Abonnenter)
                         {
+                            Console.WriteLine("Her er en varelinje");
+
                             produktPris = varelinje.Produkt.Salgpris;
 
                             // Tjek om varelinje har en særpris
@@ -158,13 +175,13 @@ namespace EcoTest.Models
                             }
 
                             // Tjek om abonnent har særpris
-                            if(abonnent.Saerpris != null)
+                            if (abonnent.Saerpris != null)
                             {
                                 produktPris = Convert.ToDecimal(abonnent.Saerpris);
                             }
 
                             // Udregn produktpris med rabat
-                            if (abonnent.RabatSomProcent != null && !erDatoUdlobet(abonnent.DatoRabatudloeb, simuleringsdato))
+                            if (abonnent.RabatSomProcent != null && !erDatoUdlobet(abonnent.DatoRabatudloeb, simuleringsdatoAktuel))
                             {
                                 produktPris = produktPris * (100 - Convert.ToDecimal(abonnent.RabatSomProcent)) / 100;
                             }
@@ -184,11 +201,10 @@ namespace EcoTest.Models
                                 produktAntal = produktAntal * abonnent.Antalsfaktor;
                             }
 
-                            transaktioner.Add(new Transaktion(simuleringsdato.Year, simuleringsdato.Month, abonnent.Debitor.Nummer, varelinje.Produkt.Nummer, produktAntal, produktPris));
+                            transaktioner.Add(new Transaktion(simuleringsdatoAktuel.Year, simuleringsdatoAktuel.Month, abonnent.Debitor.Nummer, varelinje.Produkt.Nummer, produktAntal, produktPris));
                         }
                     }
                 }
-                simuleringsdato = simuleringsdato.AddMonths(1);
             }
 
             return transaktioner;
@@ -223,6 +239,51 @@ namespace EcoTest.Models
             }
 
             return datoAtTjekke < aktuelDato;
+        }
+
+        private DateTime tilfojTidTilSimuleringsdato(DateTime simuleringsdato, string interval)
+        {
+            switch (interval)
+            {
+                case "Week":
+                    simuleringsdato = simuleringsdato.AddDays(7);
+                    break;
+                case "TwoWeeks":
+                    simuleringsdato = simuleringsdato.AddDays(14);
+                    break;
+                case "Month":
+                    simuleringsdato = simuleringsdato.AddMonths(1);
+                    break;
+                case "Quarter":
+                    simuleringsdato = simuleringsdato.AddMonths(3);
+                    break;
+                case "HalfYear":
+                    simuleringsdato = simuleringsdato.AddMonths(6);
+                    break;
+                case "Year":
+                    simuleringsdato = simuleringsdato.AddYears(1);
+                    break;
+                case "TwoMonths":
+                    simuleringsdato = simuleringsdato.AddMonths(2);
+                    break;
+                case "TwoYears":
+                    simuleringsdato = simuleringsdato.AddYears(2);
+                    break;
+                case "ThreeYears":
+                    simuleringsdato = simuleringsdato.AddYears(3);
+                    break;
+                case "FourYears":
+                    simuleringsdato = simuleringsdato.AddYears(4);
+                    break;
+                case "FiveYears":
+                    simuleringsdato = simuleringsdato.AddYears(5);
+                    break;
+                case "EightWeeks":
+                    simuleringsdato = simuleringsdato.AddDays(7 * 8);
+                    break;
+            }
+
+            return simuleringsdato;
         }
     }
 }
