@@ -132,18 +132,18 @@ namespace EcoTest.Models
         }
        
 
-        public List<Transaktion> GenererTransaktioner(List<Abonnement> abonnementer, int antalMndr)
+        public List<Transaktion> GenererTransaktioner(List<Abonnement> abonnementer, int antalMndr, decimal brugerIndex)
         {
             // Data data nu er linket opstår der ikke performance overhead ved generering af transaktioner.
             var transaktioner = new List<Transaktion>();
 
             DateTime simuleringsdatoStart = DateTime.Now;
-            DateTime simuleringsdatoSlut = simuleringsdatoStart.AddMonths(antalMndr);
+            DateTime simuleringsdatoSlut = simuleringsdatoStart.AddMonths(antalMndr + 1);
             DateTime simuleringsdatoAktuel;
             
-            decimal produktPris;
+            decimal varelinjepris;
+            decimal produktpris;
             decimal? produktAntal;
-            decimal inputIndex = 1;
 
             foreach (var abonnement in abonnementer) 
             {
@@ -156,66 +156,43 @@ namespace EcoTest.Models
                  * */
                 
 
-                Console.WriteLine(abonnement.Navn);
+                Console.WriteLine("{0}",abonnement.Navn);
 
                 //Læg tid til før næste iteration
-                simuleringsdatoAktuel = tilfojTidTilSimuleringsdato(simuleringsdatoAktuel, abonnement.Interval);
-                while(simuleringsdatoAktuel <= simuleringsdatoSlut)
+                simuleringsdatoAktuel = TilfoejIntervalTilDato(simuleringsdatoAktuel, abonnement.Interval);
+                
+                while (simuleringsdatoAktuel <= simuleringsdatoSlut && abonnement.Varelinjer.Count != 0) // Kun hvis der ER varelinjer i abonnementet og x antal intervaller ikke har passeret simuleringsperioden
                 {
                     foreach (var varelinje in abonnement.Varelinjer)
                     {
                         foreach (var abonnent in abonnement.Abonnenter)
                         {
-                            Console.WriteLine(varelinje.Produkt.Navn);
+                            bool abonnementsperiodeErAktiv = (abonnent.Startdato <= simuleringsdatoAktuel) && (abonnent.Slutdato >= simuleringsdatoAktuel);
 
-                            produktPris = varelinje.Produkt.Salgpris;
-
-                            // Tjek om varelinje har en særpris
-                            if (varelinje.Specielpris != null)
+                            // Generer kun transaktion hvis abonnentens start/slutperiode er aktiv
+                            if (abonnementsperiodeErAktiv) 
                             {
-                                produktPris = Convert.ToDecimal(varelinje.Specielpris);
+                                Console.WriteLine("Varelinje - Abonnentperiode: {1} - {2}, SimDato: {3}",varelinje.Produkt.Navn, abonnent.Startdato.ToShortDateString(), abonnent.Slutdato.ToShortDateString(), simuleringsdatoAktuel.ToShortDateString());
+
+                                produktpris = varelinje.Produkt.Salgpris;
+                                produktpris = BeregnProduktpris(produktpris, varelinje.Specielpris, abonnent.Saerpris, abonnent.RabatSomProcent, !ErRabatUdlobet(abonnent.DatoRabatudloeb, simuleringsdatoAktuel), abonnent.Prisindex, brugerIndex);
+                                produktAntal = BeregnProduktantal(varelinje.Antal, abonnent.Antalsfaktor);
+                                
+                                varelinjepris = (decimal)(produktpris * produktAntal);
+                               
+                                transaktioner.Add(new Transaktion(simuleringsdatoAktuel.Year, simuleringsdatoAktuel.Month, abonnent.Debitor.Nummer, varelinje.Produkt.Nummer, produktAntal, varelinjepris));
                             }
-
-                            // Tjek om abonnent har særpris
-                            if (abonnent.Saerpris != null)
-                            {
-                                produktPris = Convert.ToDecimal(abonnent.Saerpris);
-                            }
-
-                            // Udregn produktpris med rabat
-                            if (abonnent.RabatSomProcent != null && !erDatoUdlobet(abonnent.DatoRabatudloeb, simuleringsdatoAktuel))
-                            {
-                                produktPris = produktPris * (100 - Convert.ToDecimal(abonnent.RabatSomProcent)) / 100;
-                            }
-
-                            // Udregn produktpris med index
-                            if (abonnent.Prisindex != null)
-                            {
-                                produktPris = produktPris * inputIndex / Convert.ToDecimal(abonnent.Prisindex);
-                            }
-
-
-                            produktAntal = varelinje.Antal;
-
-                            // Gang op ift. Antalsfaktor
-                            if (abonnent.Antalsfaktor != null)
-                            {
-                                produktAntal = produktAntal * abonnent.Antalsfaktor;
-                            }
-
-                            transaktioner.Add(new Transaktion(simuleringsdatoAktuel.Year, simuleringsdatoAktuel.Month, abonnent.Debitor.Nummer, varelinje.Produkt.Nummer, produktAntal, produktPris));
                         }
                     }
-                    //Læg tid til før næste iteration
-                    simuleringsdatoAktuel = tilfojTidTilSimuleringsdato(simuleringsdatoAktuel, abonnement.Interval);
+
+                    simuleringsdatoAktuel = TilfoejIntervalTilDato(simuleringsdatoAktuel, abonnement.Interval); //Læg tid til før næste iteration
                 }
             }
 
             return transaktioner;
         }
 
-        //private decimal Spececialpris
-
+        
        
         private ProductHandle[] hentProduktHandlers(IEnumerable<SubscriptionLineData> varelinjerData)
         {
@@ -237,17 +214,44 @@ namespace EcoTest.Models
             return (from product in produkterData where product.DepartmentHandle != null select product.DepartmentHandle).ToArray();
         }
 
-        private bool erDatoUdlobet(DateTime? datoAtTjekke, DateTime aktuelDato)
+        private bool ErRabatUdlobet(DateTime? rabatSlutdato, DateTime aktuelSimuleringsdato)
         {
-            if (datoAtTjekke == null)
-            {
+            if (rabatSlutdato == null)            
                 return false;
-            }
 
-            return datoAtTjekke < aktuelDato;
+            return (rabatSlutdato < aktuelSimuleringsdato);
         }
 
-        private DateTime tilfojTidTilSimuleringsdato(DateTime simuleringsdato, string interval)
+        private decimal? BeregnProduktantal(decimal? produktantal, decimal? antalsfaktor)
+        {
+            if (antalsfaktor != null) // Gang op ift. Antalsfaktor
+                produktantal = produktantal * antalsfaktor;
+
+            return produktantal;
+        }
+
+        private decimal BeregnProduktpris(decimal produktpris, decimal? varelinjeSaerpris, decimal? abonnentSaerpris, decimal? rabatSomProcent, bool rabatErUdloebet, decimal? abonnentPrisindex, decimal brugerIndex)
+        {
+            // Tjek om varelinjen har en særlig produktpris
+            if (varelinjeSaerpris != null) 
+                produktpris = Convert.ToDecimal(varelinjeSaerpris);
+
+            // Tjek om abonnenten har en særlig produktpris
+            if (abonnentSaerpris != null) 
+                produktpris = Convert.ToDecimal(abonnentSaerpris);
+
+            // Udregn produktpris med eventuel rabat
+            if (rabatSomProcent != null && !rabatErUdloebet) 
+                produktpris = produktpris * (100 - Convert.ToDecimal(rabatSomProcent)) / 100;
+
+            // Udregn produktpris med brugerdefineret index
+            if (abonnentPrisindex != null) 
+                produktpris = produktpris * brugerIndex / Convert.ToDecimal(abonnentPrisindex);
+
+            return produktpris;
+        }
+
+        private DateTime TilfoejIntervalTilDato(DateTime simuleringsdato, string interval)
         {
             switch (interval)
             {
