@@ -11,8 +11,8 @@ namespace EcoTest
     {
         static void Main(string[] args)
         {
-            Controller controller = new Controller();
-            controller.go();
+            GenererNySimuleringController genererNySimuleringController = new GenererNySimuleringController();
+            genererNySimuleringController.GenererNySimulering();
         }
     }
 }

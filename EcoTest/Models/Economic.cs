@@ -6,6 +6,7 @@ using EcoTest.EconomicSOAP;
 
 namespace EcoTest.Models
 {
+
     class Economic
     {
         // E-conomic adgang
@@ -44,6 +45,9 @@ namespace EcoTest.Models
             _economicKlient.Disconnect();
         }
 
+        /// <summary>
+        /// Henter data fra e-conomic. Data er gemt internt og linkes først sammen ved kørsel af "ForbindData".
+        /// </summary>
         public void HentData()
         {
             Forbind();
@@ -81,7 +85,10 @@ namespace EcoTest.Models
 
         }
 
-
+        /// <summary>
+        /// Forbinder data hentet fra e-conomic. Returnerer en liste af abonnementer med linkede varelinjer og abonnenter.
+        /// </summary>
+        /// <returns></returns>
         public List<Abonnement> ForbindData()
         {
             //
@@ -131,14 +138,20 @@ namespace EcoTest.Models
             return abonnementopslag.Values.ToList();
         }
        
-
-        public List<Transaktion> GenererTransaktioner(List<Abonnement> abonnementer, int antalMndr, decimal brugerIndex)
+        /// <summary>
+        /// Genererer en liste af transaktioner på baggrund af den hægtede data. Listen kan indeholde redundant data som skal optimeres.
+        /// </summary>
+        /// <param name="abonnementer">Liste af abonnementer hentet vha. "ForbindData" metoden.</param>
+        /// <param name="antalSimuleringsmaaneder">Antal måneder der ønskes simuleret over.</param>
+        /// <param name="brugerIndex">Index til 1 til afgørelsen af produktpris.</param>
+        /// <returns>Liste af transaktioner klar til lagring i database.</returns>
+        public List<Transaktion> GenererTransaktioner(List<Abonnement> abonnementer, int antalSimuleringsmaaneder, decimal brugerIndex)
         {
             // Data data nu er linket opstår der ikke performance overhead ved generering af transaktioner.
             var transaktioner = new List<Transaktion>();
 
             DateTime simuleringsdatoStart = DateTime.Now;
-            DateTime simuleringsdatoSlut = simuleringsdatoStart.AddMonths(antalMndr + 1);
+            DateTime simuleringsdatoSlut = simuleringsdatoStart.AddMonths(antalSimuleringsmaaneder + 1);
             DateTime simuleringsdatoAktuel;
             
             decimal varelinjepris;
