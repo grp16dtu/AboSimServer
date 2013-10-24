@@ -264,6 +264,32 @@ namespace EcoTest.Models
             return produktpris;
         }
 
+        private DateTime KalenderAarDato(DateTime dato)
+        {
+            int kvartal = (int)(dato.Month/3) + 1; // Afgør kvartalsnummer
+
+            switch (kvartal)
+            {
+                case 1:
+
+                    break;
+
+                case 2:
+                    break;
+
+                case 3:
+                    break;
+
+                case 4:
+                    break;
+                
+                default:
+                    break;
+            }
+
+            return dato;
+        }
+
         private DateTime TilfoejIntervalTilDato(DateTime simuleringsdato, string interval)
         {
             switch (interval)
