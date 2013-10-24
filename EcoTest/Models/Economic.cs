@@ -150,7 +150,8 @@ namespace EcoTest.Models
             // Data data nu er linket opstår der ikke performance overhead ved generering af transaktioner.
             var transaktioner = new List<Transaktion>();
 
-            DateTime simuleringsdatoStart = DateTime.Now;
+            DateTime simuleringsdatoStart = FindNaesteFoerste();
+            Console.WriteLine(simuleringsdatoStart.ToShortDateString());
             DateTime simuleringsdatoSlut = simuleringsdatoStart.AddMonths(antalSimuleringsmaaneder + 1);
             DateTime simuleringsdatoAktuel;
             
@@ -162,17 +163,10 @@ namespace EcoTest.Models
             {
                 simuleringsdatoAktuel = simuleringsdatoStart;
 
-                /*
-                //Kalenderår
-                if (abonnement.KalenderAar)
-                    simuleringsdatoAktuel = new DateTime(simuleringsdatoAktuel.Year, simuleringsdatoAktuel.Month, 1);
-                 * */
-                
-
                 Console.WriteLine("{0}",abonnement.Navn);
 
                 //Læg tid til før næste iteration
-                simuleringsdatoAktuel = TilfoejIntervalTilDato(simuleringsdatoAktuel, abonnement.Interval);
+                //simuleringsdatoAktuel = TilfoejIntervalTilDato(simuleringsdatoAktuel, abonnement.Interval);
                 
                 while (simuleringsdatoAktuel <= simuleringsdatoSlut && abonnement.Varelinjer.Count != 0) // Kun hvis der ER varelinjer i abonnementet og x antal intervaller ikke har passeret simuleringsperioden
                 {
@@ -180,7 +174,7 @@ namespace EcoTest.Models
                     {
                         foreach (var abonnent in abonnement.Abonnenter)
                         {
-                            bool abonnementsperiodeErAktiv = (abonnent.Startdato <= simuleringsdatoAktuel) && (abonnent.Slutdato >= simuleringsdatoAktuel);
+                            bool abonnementsperiodeErAktiv = (FindSidsteFoerste(abonnent.Startdato) <= simuleringsdatoAktuel) && (abonnent.Slutdato >= simuleringsdatoAktuel);
 
                             // Generer kun transaktion hvis abonnentens start/slutperiode er aktiv
                             if (abonnementsperiodeErAktiv) 
@@ -194,6 +188,7 @@ namespace EcoTest.Models
                                 varelinjepris = (decimal)(produktpris * produktAntal);
                                
                                 transaktioner.Add(new Transaktion(simuleringsdatoAktuel.Year, simuleringsdatoAktuel.Month, abonnent.Debitor.Nummer, varelinje.Produkt.Nummer, produktAntal, varelinjepris));
+                                Console.WriteLine(simuleringsdatoAktuel.ToShortDateString());
                             }
                         }
                     }
@@ -264,32 +259,6 @@ namespace EcoTest.Models
             return produktpris;
         }
 
-        private DateTime KalenderAarDato(DateTime dato)
-        {
-            int kvartal = (int)(dato.Month/3) + 1; // Afgør kvartalsnummer
-
-            switch (kvartal)
-            {
-                case 1:
-
-                    break;
-
-                case 2:
-                    break;
-
-                case 3:
-                    break;
-
-                case 4:
-                    break;
-                
-                default:
-                    break;
-            }
-
-            return dato;
-        }
-
         private DateTime TilfoejIntervalTilDato(DateTime simuleringsdato, string interval)
         {
             switch (interval)
@@ -333,6 +302,23 @@ namespace EcoTest.Models
             }
 
             return simuleringsdato;
+        }
+
+        private DateTime FindNaesteFoerste()
+        {
+            DateTime nu = DateTime.Now;
+
+            if(nu.Day > 1)
+            {
+                nu = nu.AddMonths(1);
+            }
+
+            return new DateTime(nu.Year, nu.Month, 1);
+        }
+
+        private DateTime FindSidsteFoerste(DateTime input)
+        {
+            return new DateTime(input.Year, input.Month, 1);
         }
     }
 }
