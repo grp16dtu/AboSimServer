@@ -11,7 +11,7 @@ namespace EcoTest.Models
         public DateTime Startdato { get; set; }
         public DateTime Slutdato { get; set; }
         public DateTime Registreringsdato { get; set; }
-        public DateTime Udloebsdato { get; set; }
+        public DateTime Ophoer { get; set; }
         public decimal? Antalsfaktor { get; set; }
         public decimal? Prisindex { get; set; }
         public decimal? Saerpris { get; set; }
@@ -24,12 +24,20 @@ namespace EcoTest.Models
             RabatSomProcent = discountAsPercent;
             DatoRabatudloeb = discountExpiryDate;
             Slutdato = endDate;
-            Udloebsdato = expiryDate;
+            Ophoer = expiryDate;
             Antalsfaktor = quantityFactor;
             Prisindex = priceIndex;
             Registreringsdato = registeredDate;
             Saerpris = specialPrice;
             Startdato = startDate;
+        }
+
+        public DateTime EndegyldigSlutdato()
+        {
+            if (Ophoer != null && Ophoer < Slutdato)    
+                return Ophoer;
+            else
+                return Slutdato;
         }
     }
 }

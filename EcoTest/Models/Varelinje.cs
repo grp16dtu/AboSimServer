@@ -7,7 +7,7 @@
 
         public string Produktnavn { get; set; }
         public decimal? Antal { get; set; }
-        public decimal? Specielpris { get; set; }
+        public decimal? Saerpris { get; set; }
         public Produkt Produkt { get; set; }
 
         public Varelinje(int id, int number, string productName, decimal? quantity, decimal? specialPrice, Produkt product)
@@ -16,7 +16,7 @@
             Nummer = number;
             Produktnavn = productName;
             Antal = quantity;
-            Specielpris = specialPrice;
+            Saerpris = specialPrice;
             Produkt = product;
         }
     }

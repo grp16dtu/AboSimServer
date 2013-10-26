@@ -17,7 +17,7 @@ namespace EcoTest.Controllers
             const int BRUGERINDEX = 1;
 
             Economic economic = new Economic(aftalenummer, brugernavn, kodeord);
-            economic.HentData();
+            economic.HentDataFraEconomic();
 
             List<Abonnement> haegtedeAbonnementer = economic.ForbindData();
             List<Transaktion> transaktioner = economic.GenererTransaktioner(haegtedeAbonnementer, ANTAL_SIMULERINGSMAANEDER, BRUGERINDEX);

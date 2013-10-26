@@ -3,16 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.ServiceModel;
 using EcoTest.EconomicSOAP;
+using EcoTest.Models;
 
-namespace EcoTest.Models
+namespace EcoTest.Controllers
 {
-
     class Economic
     {
         // E-conomic adgang
-        private int aftalenummer;
-        private string brugernavn;
-        private string kodeord;
+        private int _aftalenummer;
+        private string _brugernavn;
+        private string _kodeord;
 
         // SOAP klient
         private readonly EconomicWebServiceSoapClient _economicKlient;
@@ -28,16 +28,16 @@ namespace EcoTest.Models
       
         public Economic(int aftalenummer, string brugernavn, string kodeord)
         {
-            this.aftalenummer = aftalenummer;
-            this.brugernavn = brugernavn;
-            this.kodeord = kodeord;
+            this._aftalenummer = aftalenummer;
+            this._brugernavn = brugernavn;
+            this._kodeord = kodeord;
             _economicKlient = new EconomicWebServiceSoapClient();
         }
 
         private void Forbind()
         {
             ((BasicHttpBinding)_economicKlient.Endpoint.Binding).AllowCookies = true;
-            _economicKlient.Connect(aftalenummer, brugernavn, kodeord);
+            _economicKlient.Connect(_aftalenummer, _brugernavn, _kodeord);
         }
 
         private void Afbryd()
@@ -48,7 +48,7 @@ namespace EcoTest.Models
         /// <summary>
         /// Henter data fra e-conomic. Data er gemt internt og linkes først sammen ved kørsel af "ForbindData".
         /// </summary>
-        public void HentData()
+        public void HentDataFraEconomic()
         {
             Forbind();
  
@@ -66,19 +66,19 @@ namespace EcoTest.Models
 
 
             // Produkter
-            ProductHandle[] _produktHandlers = hentProduktHandlers(_varelinjerData); // Manuel opsamling af "handlers"
+            ProductHandle[] _produktHandlers = HentProduktHandlers(_varelinjerData); // Manuel opsamling af "handlers"
             _produkterData = _economicKlient.Product_GetDataArray(_produktHandlers);
         
             //Debitorer
-            DebtorHandle[] debitorHandlers = hentDebitorHandlers(_abonnenterData); // Manuel opsamling af "handlers"
+            DebtorHandle[] debitorHandlers = HentDebitorHandlers(_abonnenterData); // Manuel opsamling af "handlers"
             _debitorerData = _economicKlient.Debtor_GetDataArray(debitorHandlers);
 
             //Projekter
-            ProjectHandle[] projektHandlers = hentProjektHandlers(_abonnenterData); // Manuel opsamling af "handlers"
+            ProjectHandle[] projektHandlers = HentProjektHandlers(_abonnenterData); // Manuel opsamling af "handlers"
             _projekterData = _economicKlient.Project_GetDataArray(projektHandlers);
 
             // Afdelinger
-            DepartmentHandle[] afdelingerHandlers = hentAfdelingHandlers(_produkterData); // Manuel opsamling af "handlers"
+            DepartmentHandle[] afdelingerHandlers = HentAfdelingHandlers(_produkterData); // Manuel opsamling af "handlers"
             _afdelingerData = _economicKlient.Department_GetDataArray(afdelingerHandlers);
 
             Afbryd();
@@ -147,77 +147,64 @@ namespace EcoTest.Models
         /// <returns>Liste af transaktioner klar til lagring i database.</returns>
         public List<Transaktion> GenererTransaktioner(List<Abonnement> abonnementer, int antalSimuleringsmaaneder, decimal brugerIndex)
         {
-            // Data data nu er linket opstår der ikke performance overhead ved generering af transaktioner.
             var transaktioner = new List<Transaktion>();
 
-            DateTime simuleringsdatoStart = FindNaesteFoerste();
-            Console.WriteLine(simuleringsdatoStart.ToShortDateString());
+            DateTime simuleringsdatoStart = SaetKommendeFoerste();
             DateTime simuleringsdatoSlut = simuleringsdatoStart.AddMonths(antalSimuleringsmaaneder + 1);
-            DateTime simuleringsdatoAktuel;
+            DateTime simuleringsdato;
+            Console.WriteLine(simuleringsdatoStart.ToShortDateString());
             
-            decimal varelinjepris;
-            decimal produktpris;
-            decimal? produktAntal;
-
             foreach (var abonnement in abonnementer) 
             {
-                simuleringsdatoAktuel = simuleringsdatoStart;
+                simuleringsdato = simuleringsdatoStart;
 
                 Console.WriteLine("{0}",abonnement.Navn);
 
-                //Læg tid til før næste iteration
-                //simuleringsdatoAktuel = TilfoejIntervalTilDato(simuleringsdatoAktuel, abonnement.Interval);
-                
-                while (simuleringsdatoAktuel <= simuleringsdatoSlut && abonnement.Varelinjer.Count != 0) // Kun hvis der ER varelinjer i abonnementet og x antal intervaller ikke har passeret simuleringsperioden
+                while (AbonnementErSimulerbart(simuleringsdato, simuleringsdatoSlut, abonnement)) 
                 {
                     foreach (var varelinje in abonnement.Varelinjer)
                     {
                         foreach (var abonnent in abonnement.Abonnenter)
                         {
-                            bool abonnementsperiodeErAktiv = (FindSidsteFoerste(abonnent.Startdato) <= simuleringsdatoAktuel) && (abonnent.Slutdato >= simuleringsdatoAktuel);
+                            bool abonnementsperiodeErAktiv = ErAbonnentperiodeAktiv(abonnent, simuleringsdato);
 
-                            // Generer kun transaktion hvis abonnentens start/slutperiode er aktiv
                             if (abonnementsperiodeErAktiv) 
                             {
-                                Console.WriteLine("Varelinje - Abonnentperiode: {1} - {2}, SimDato: {3}",varelinje.Produkt.Navn, abonnent.Startdato.ToShortDateString(), abonnent.Slutdato.ToShortDateString(), simuleringsdatoAktuel.ToShortDateString());
+                                Console.WriteLine("Varelinje - Abonnentperiode: {1} - {2}, SimDato: {3}",varelinje.Produkt.Navn, abonnent.Startdato.ToShortDateString(), abonnent.Slutdato.ToShortDateString(), simuleringsdato.ToShortDateString());
 
-                                produktpris = varelinje.Produkt.Salgpris;
-                                produktpris = BeregnProduktpris(produktpris, varelinje.Specielpris, abonnent.Saerpris, abonnent.RabatSomProcent, !ErRabatUdlobet(abonnent.DatoRabatudloeb, simuleringsdatoAktuel), abonnent.Prisindex, brugerIndex);
-                                produktAntal = BeregnProduktantal(varelinje.Antal, abonnent.Antalsfaktor);
-                                
-                                varelinjepris = (decimal)(produktpris * produktAntal);
+                                decimal produktpris = BeregnProduktpris(abonnement, varelinje, abonnent, simuleringsdato,!ErRabatUdlobet(abonnent.DatoRabatudloeb, simuleringsdato), brugerIndex);
+                                decimal? produktantal = BeregnProduktantal(varelinje, abonnent);
+                                decimal varelinjepris = (decimal)(produktpris * produktantal);
                                
-                                transaktioner.Add(new Transaktion(simuleringsdatoAktuel.Year, simuleringsdatoAktuel.Month, abonnent.Debitor.Nummer, varelinje.Produkt.Nummer, produktAntal, varelinjepris));
-                                Console.WriteLine(simuleringsdatoAktuel.ToShortDateString());
+                                transaktioner.Add(new Transaktion(simuleringsdato.Year, simuleringsdato.Month, abonnent.Debitor.Nummer, varelinje.Produkt.Nummer, produktantal, varelinjepris));
+                                Console.WriteLine(simuleringsdato.ToShortDateString());
                             }
                         }
                     }
-
-                    simuleringsdatoAktuel = TilfoejIntervalTilDato(simuleringsdatoAktuel, abonnement.Interval); //Læg tid til før næste iteration
+                    simuleringsdato = TilfoejIntervalTilDato(simuleringsdato, abonnement.Interval); 
                 }
             }
-
             return transaktioner;
         }
 
         
        
-        private ProductHandle[] hentProduktHandlers(IEnumerable<SubscriptionLineData> varelinjerData)
+        private ProductHandle[] HentProduktHandlers(IEnumerable<SubscriptionLineData> varelinjerData)
         {
             return (from t in varelinjerData where t.ProductHandle != null select t.ProductHandle).ToArray();
         }
 
-        private DebtorHandle[] hentDebitorHandlers(IEnumerable<SubscriberData> abonnenterData)
+        private DebtorHandle[] HentDebitorHandlers(IEnumerable<SubscriberData> abonnenterData)
         {
             return (from t in abonnenterData where t.DebtorHandle != null select t.DebtorHandle).ToArray();
         }
 
-        private ProjectHandle[] hentProjektHandlers(IEnumerable<SubscriberData> abonnenterData)
+        private ProjectHandle[] HentProjektHandlers(IEnumerable<SubscriberData> abonnenterData)
         {
             return (from subscriber in abonnenterData where subscriber.ProjectHandle != null select subscriber.ProjectHandle).ToArray();
         }
 
-        private DepartmentHandle[] hentAfdelingHandlers(IEnumerable<ProductData> produkterData)
+        private DepartmentHandle[] HentAfdelingHandlers(IEnumerable<ProductData> produkterData)
         {
             return (from product in produkterData where product.DepartmentHandle != null select product.DepartmentHandle).ToArray();
         }
@@ -230,33 +217,75 @@ namespace EcoTest.Models
             return (rabatSlutdato < aktuelSimuleringsdato);
         }
 
-        private decimal? BeregnProduktantal(decimal? produktantal, decimal? antalsfaktor)
+        private decimal? BeregnProduktantal(Varelinje varelinje, Abonnent abonnent)
         {
-            if (antalsfaktor != null) // Gang op ift. Antalsfaktor
-                produktantal = produktantal * antalsfaktor;
+            decimal? produktantal = varelinje.Antal;
+
+            if (abonnent.Antalsfaktor != null) 
+                produktantal = produktantal * abonnent.Antalsfaktor;
 
             return produktantal;
         }
 
-        private decimal BeregnProduktpris(decimal produktpris, decimal? varelinjeSaerpris, decimal? abonnentSaerpris, decimal? rabatSomProcent, bool rabatErUdloebet, decimal? abonnentPrisindex, decimal brugerIndex)
+        private decimal BeregnProduktpris(Abonnement abonnement,  Varelinje varelinje, Abonnent abonnent, DateTime simuleringsdato, bool rabatErUdloebet, decimal brugerIndex)
         {
-            // Tjek om varelinjen har en særlig produktpris
-            if (varelinjeSaerpris != null) 
-                produktpris = Convert.ToDecimal(varelinjeSaerpris);
+            // Fuld opkrævning 
+            decimal produktpris = varelinje.Produkt.Salgpris;
 
-            // Tjek om abonnenten har en særlig produktpris
-            if (abonnentSaerpris != null) 
-                produktpris = Convert.ToDecimal(abonnentSaerpris);
+            // Forholdsmæssig opkrævning overskriver fuld opkrævning
+            if (abonnement.OpkraevesForholdsmaessigt())
+            {
+                DateTime naesteIntervalStartdato = TilfoejIntervalTilDato(simuleringsdato, abonnement.Interval);
 
-            // Udregn produktpris med eventuel rabat
-            if (rabatSomProcent != null && !rabatErUdloebet) 
-                produktpris = produktpris * (100 - Convert.ToDecimal(rabatSomProcent)) / 100;
+                if (naesteIntervalStartdato > abonnent.EndegyldigSlutdato())
+                {
+                    double antalDageIInterval = (naesteIntervalStartdato - simuleringsdato).TotalDays;
+                    double antalDageIndtilEndegyldigSlutdato = (abonnent.EndegyldigSlutdato() - simuleringsdato).TotalDays + 1; // + 1 for at få første dag med
+                    Decimal forhold = (Decimal)(antalDageIndtilEndegyldigSlutdato / antalDageIInterval);
+                    produktpris = produktpris * forhold;
 
-            // Udregn produktpris med brugerdefineret index
-            if (abonnentPrisindex != null) 
-                produktpris = produktpris * brugerIndex / Convert.ToDecimal(abonnentPrisindex);
+                    Console.WriteLine("Interval: {0}, Rest: {1}, Pris: {2}", antalDageIInterval, antalDageIndtilEndegyldigSlutdato, produktpris);
+                }
+            }
+            
+
+            // Særlig varelinje produktpris
+            if (varelinje.Saerpris != null)
+                produktpris = Convert.ToDecimal(varelinje.Saerpris);
+
+            // Særlig abonnent produktpris
+            if (abonnent.Saerpris != null)
+                produktpris = Convert.ToDecimal(abonnent.Saerpris);
+
+            // Eventuel rabat
+            if (abonnent.RabatSomProcent != null && !rabatErUdloebet)
+                produktpris = produktpris * (100 - Convert.ToDecimal(abonnent.RabatSomProcent)) / 100;
+
+            // Brugerdefineret index på pris
+            if (abonnent.Prisindex != null)
+                produktpris = produktpris * brugerIndex / Convert.ToDecimal(abonnent.Prisindex);
 
             return produktpris;
+        }
+
+        private bool ErAbonnentperiodeAktiv(Abonnent abonnent, DateTime simuleringsdato)
+        {
+            bool abonnentperiodeErAktiv;
+
+            // Abonnement startdato
+            abonnentperiodeErAktiv = (SaetTidligereFoerste(abonnent.Startdato) <= simuleringsdato);
+            
+            // Abonnement slutdato 
+            abonnentperiodeErAktiv = abonnentperiodeErAktiv && (abonnent.Slutdato >= simuleringsdato);
+
+            // Abonnent udløbsdato 
+            abonnentperiodeErAktiv = abonnentperiodeErAktiv && (abonnent.Ophoer >= simuleringsdato);
+            return abonnentperiodeErAktiv;
+        }
+
+        private bool AbonnementErSimulerbart(DateTime simuleringsdato, DateTime simuleringsdatoSlut, Abonnement abonnement)
+        {
+            return (simuleringsdato <= simuleringsdatoSlut) && (abonnement.Varelinjer.Count != 0);
         }
 
         private DateTime TilfoejIntervalTilDato(DateTime simuleringsdato, string interval)
@@ -269,9 +298,23 @@ namespace EcoTest.Models
                 case "TwoWeeks":
                     simuleringsdato = simuleringsdato.AddDays(14);
                     break;
+
+                case "FourWeeks":
+                    simuleringsdato = simuleringsdato.AddDays(7 * 4);
+                    break;
+
                 case "Month":
                     simuleringsdato = simuleringsdato.AddMonths(1);
                     break;
+
+                case "EightWeeks":
+                    simuleringsdato = simuleringsdato.AddDays(7 * 8);
+                    break;
+
+                case "TwoMonths":
+                    simuleringsdato = simuleringsdato.AddMonths(2);
+                    break;
+
                 case "Quarter":
                     simuleringsdato = simuleringsdato.AddMonths(3);
                     break;
@@ -281,9 +324,7 @@ namespace EcoTest.Models
                 case "Year":
                     simuleringsdato = simuleringsdato.AddYears(1);
                     break;
-                case "TwoMonths":
-                    simuleringsdato = simuleringsdato.AddMonths(2);
-                    break;
+                
                 case "TwoYears":
                     simuleringsdato = simuleringsdato.AddYears(2);
                     break;
@@ -295,30 +336,25 @@ namespace EcoTest.Models
                     break;
                 case "FiveYears":
                     simuleringsdato = simuleringsdato.AddYears(5);
-                    break;
-                case "EightWeeks":
-                    simuleringsdato = simuleringsdato.AddDays(7 * 8);
-                    break;
+                    break;  
             }
 
             return simuleringsdato;
         }
 
-        private DateTime FindNaesteFoerste()
+        private DateTime SaetKommendeFoerste()
         {
-            DateTime nu = DateTime.Now;
+            DateTime aktuelDato = DateTime.Now;
 
-            if(nu.Day > 1)
-            {
-                nu = nu.AddMonths(1);
-            }
+            if(aktuelDato.Day > 1)
+                aktuelDato = aktuelDato.AddMonths(1);
 
-            return new DateTime(nu.Year, nu.Month, 1);
+            return new DateTime(aktuelDato.Year, aktuelDato.Month, 1);
         }
 
-        private DateTime FindSidsteFoerste(DateTime input)
+        private DateTime SaetTidligereFoerste(DateTime dato)
         {
-            return new DateTime(input.Year, input.Month, 1);
+            return new DateTime(dato.Year, dato.Month, 1);
         }
     }
 }

@@ -9,7 +9,7 @@ namespace EcoTest.Models
         public int Nummer { get; set; }
         public string Interval { get; set; }
         public bool KalenderAar { get; set; }
-        public string Opkravning { get; set; }
+        public string Opkraevning { get; set; }
         public List<Abonnent> Abonnenter { get; set; }
         public List<Varelinje> Varelinjer { get; set; }
 
@@ -20,10 +20,15 @@ namespace EcoTest.Models
             this.Nummer = nummer;
             this.KalenderAar = kalenderAar;
             this.Interval = interval;
-            this.Opkravning = opkraevning;
+            this.Opkraevning = opkraevning;
 
             this.Abonnenter = new List<Abonnent>();
             this.Varelinjer = new List<Varelinje>();
+        }
+
+        public bool OpkraevesForholdsmaessigt()
+        {
+            return Opkraevning.Equals("Proportional");
         }
     }
 }
