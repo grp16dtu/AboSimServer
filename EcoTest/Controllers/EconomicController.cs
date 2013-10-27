@@ -7,7 +7,7 @@ using EcoTest.Models;
 
 namespace EcoTest.Controllers
 {
-    class Economic
+    class EconomicController
     {
         // E-conomic adgang
         private int _aftalenummer;
@@ -23,15 +23,14 @@ namespace EcoTest.Controllers
         private SubscriptionLineData[] _varelinjerData;
         private ProductData[] _produkterData;
         private DebtorData[] _debitorerData;
-        private ProjectData[] _projekterData;
         private DepartmentData[] _afdelingerData;
       
-        public Economic(int aftalenummer, string brugernavn, string kodeord)
+        public EconomicController(int aftalenummer, string brugernavn, string kodeord)
         {
             this._aftalenummer = aftalenummer;
             this._brugernavn = brugernavn;
             this._kodeord = kodeord;
-            _economicKlient = new EconomicWebServiceSoapClient();
+            this._economicKlient = new EconomicWebServiceSoapClient();
         }
 
         private void Forbind()
@@ -73,12 +72,9 @@ namespace EcoTest.Controllers
             DebtorHandle[] debitorHandlers = HentDebitorHandlers(_abonnenterData); // Manuel opsamling af "handlers"
             _debitorerData = _economicKlient.Debtor_GetDataArray(debitorHandlers);
 
-            //Projekter
-            ProjectHandle[] projektHandlers = HentProjektHandlers(_abonnenterData); // Manuel opsamling af "handlers"
-            _projekterData = _economicKlient.Project_GetDataArray(projektHandlers);
-
             // Afdelinger
-            DepartmentHandle[] afdelingerHandlers = HentAfdelingHandlers(_produkterData); // Manuel opsamling af "handlers"
+            //DepartmentHandle[] afdelingerHandlers = HentAfdelingHandlers(_produkterData); // Manuel opsamling af "handlers"
+            DepartmentHandle[] afdelingerHandlers = _economicKlient.Department_GetAll();
             _afdelingerData = _economicKlient.Department_GetDataArray(afdelingerHandlers);
 
             Afbryd();
@@ -94,14 +90,20 @@ namespace EcoTest.Controllers
             //
             // Konverter e-conomic dataobjekter til "egne" dataobjekter. Alt data lægges i opslag og køres kun igennem een gang ved konvertering.
             Dictionary<int, Abonnement> abonnementopslag = new Dictionary<int, Abonnement>();
-            Dictionary<string, Debitor> debitoropslag = new Dictionary<string, Debitor>();
             Dictionary<int, Abonnent> abonnentopslag = new Dictionary<int, Abonnent>();
-            Dictionary<string, Produkt> produktopslag = new Dictionary<string, Produkt>();
+            Dictionary<int, Afdeling> afdelingsopslag = new Dictionary<int, Afdeling>();
+            Dictionary<string, Debitor> debitoropslag = new Dictionary<string, Debitor>();
+            Dictionary<string, Vare> produktopslag = new Dictionary<string, Vare>();
             Dictionary<int, Varelinje> varelinjeopslag = new Dictionary<int, Varelinje>();
 
             foreach (var abonnementData in _abonnementerData)
             {
                 abonnementopslag.Add(abonnementData.Id, new Abonnement(abonnementData.Id, abonnementData.Name, abonnementData.Number, abonnementData.CalendarYearBasis, abonnementData.SubscriptionInterval.ToString(), abonnementData.Collection.ToString()));
+            }
+
+            foreach (var afdelingsData in _afdelingerData)
+            {
+                afdelingsopslag.Add(afdelingsData.Number, new Afdeling(afdelingsData.Number, afdelingsData.Name));
             }
 
             foreach (var debitorData in _debitorerData)
@@ -119,15 +121,25 @@ namespace EcoTest.Controllers
 
             foreach (var produktData in _produkterData)
             {
+                // Evt. afdeling
+                Afdeling afdeling = null;
+                if (produktData.DepartmentHandle != null)
+                    afdeling = afdelingsopslag[produktData.DepartmentHandle.Number];
+                
                 if (!produktopslag.ContainsKey(produktData.Handle.Number))
-                    produktopslag.Add(produktData.Handle.Number, new Produkt(produktData.CostPrice, produktData.Name, produktData.Number, produktData.SalesPrice, produktData.Volume));
+                    produktopslag.Add(produktData.Handle.Number, new Vare(produktData.CostPrice, produktData.Name, produktData.Number, produktData.SalesPrice, produktData.Volume, afdeling));
             }
 
             foreach (var varelinjeData in _varelinjerData)
             {
+                //Evt. afdeling
+                Afdeling afdeling = null;
+                if (varelinjeData.DepartmentHandle != null)
+                    afdeling = afdelingsopslag[varelinjeData.DepartmentHandle.Number];
+
                 if (varelinjeData.ProductHandle != null)
                 {
-                    Varelinje varelinje = new Varelinje(varelinjeData.Id, varelinjeData.Number, varelinjeData.ProductName, varelinjeData.Quantity, varelinjeData.SpecialPrice, produktopslag[varelinjeData.ProductHandle.Number]);
+                    Varelinje varelinje = new Varelinje(varelinjeData.Id, varelinjeData.Number, varelinjeData.ProductName, varelinjeData.Quantity, varelinjeData.SpecialPrice, produktopslag[varelinjeData.ProductHandle.Number], afdeling);
                     abonnementopslag[varelinjeData.Id].Varelinjer.Add(varelinje); 
 
                     if (!varelinjeopslag.ContainsKey(varelinjeData.Id))
@@ -152,13 +164,11 @@ namespace EcoTest.Controllers
             DateTime simuleringsdatoStart = SaetKommendeFoerste();
             DateTime simuleringsdatoSlut = simuleringsdatoStart.AddMonths(antalSimuleringsmaaneder + 1);
             DateTime simuleringsdato;
-            Console.WriteLine(simuleringsdatoStart.ToShortDateString());
+            //Console.WriteLine(simuleringsdatoStart.ToShortDateString());
             
             foreach (var abonnement in abonnementer) 
             {
                 simuleringsdato = simuleringsdatoStart;
-
-                Console.WriteLine("{0}",abonnement.Navn);
 
                 while (AbonnementErSimulerbart(simuleringsdato, simuleringsdatoSlut, abonnement)) 
                 {
@@ -171,13 +181,13 @@ namespace EcoTest.Controllers
                             if (abonnementsperiodeErAktiv) 
                             {
                                 Console.WriteLine("Varelinje - Abonnentperiode: {1} - {2}, SimDato: {3}",varelinje.Produkt.Navn, abonnent.Startdato.ToShortDateString(), abonnent.Slutdato.ToShortDateString(), simuleringsdato.ToShortDateString());
+                                Console.WriteLine(simuleringsdato.ToShortDateString());
 
                                 decimal produktpris = BeregnProduktpris(abonnement, varelinje, abonnent, simuleringsdato,!ErRabatUdlobet(abonnent.DatoRabatudloeb, simuleringsdato), brugerIndex);
                                 decimal? produktantal = BeregnProduktantal(varelinje, abonnent);
                                 decimal varelinjepris = (decimal)(produktpris * produktantal);
-                               
-                                transaktioner.Add(new Transaktion(simuleringsdato.Year, simuleringsdato.Month, abonnent.Debitor.Nummer, varelinje.Produkt.Nummer, produktantal, varelinjepris));
-                                Console.WriteLine(simuleringsdato.ToShortDateString());
+                                int? afdelingsnummer = HentAfdelingsnummer(varelinje);                               
+                                transaktioner.Add(new Transaktion(simuleringsdato.Year, simuleringsdato.Month, abonnent.Debitor.Nummer, varelinje.Produkt.Nummer, produktantal, varelinjepris, afdelingsnummer));
                             }
                         }
                     }
@@ -199,14 +209,15 @@ namespace EcoTest.Controllers
             return (from t in abonnenterData where t.DebtorHandle != null select t.DebtorHandle).ToArray();
         }
 
-        private ProjectHandle[] HentProjektHandlers(IEnumerable<SubscriberData> abonnenterData)
+        private int? HentAfdelingsnummer(Varelinje varelinje)
         {
-            return (from subscriber in abonnenterData where subscriber.ProjectHandle != null select subscriber.ProjectHandle).ToArray();
-        }
+            if (varelinje.Afdeling != null)
+                return varelinje.Afdeling.Nummer;
 
-        private DepartmentHandle[] HentAfdelingHandlers(IEnumerable<ProductData> produkterData)
-        {
-            return (from product in produkterData where product.DepartmentHandle != null select product.DepartmentHandle).ToArray();
+            else if (varelinje.Produkt.Afdeling != null)
+                return varelinje.Produkt.Afdeling.Nummer;
+
+            else return null;
         }
 
         private bool ErRabatUdlobet(DateTime? rabatSlutdato, DateTime aktuelSimuleringsdato)
@@ -237,15 +248,31 @@ namespace EcoTest.Controllers
             {
                 DateTime naesteIntervalStartdato = TilfoejIntervalTilDato(simuleringsdato, abonnement.Interval);
 
-                if (naesteIntervalStartdato > abonnent.EndegyldigSlutdato())
-                {
-                    double antalDageIInterval = (naesteIntervalStartdato - simuleringsdato).TotalDays;
-                    double antalDageIndtilEndegyldigSlutdato = (abonnent.EndegyldigSlutdato() - simuleringsdato).TotalDays + 1; // + 1 for at få første dag med
-                    Decimal forhold = (Decimal)(antalDageIndtilEndegyldigSlutdato / antalDageIInterval);
-                    produktpris = produktpris * forhold;
+                double antalDageIndtilEndegyldigSlutdato = (naesteIntervalStartdato - simuleringsdato).TotalDays;
+                double antalDageIInterval = (naesteIntervalStartdato - simuleringsdato).TotalDays;
+                
 
-                    Console.WriteLine("Interval: {0}, Rest: {1}, Pris: {2}", antalDageIInterval, antalDageIndtilEndegyldigSlutdato, produktpris);
+                //Simulering før start dato
+                if (abonnent.Startdato > simuleringsdato)
+                {
+                    antalDageIndtilEndegyldigSlutdato = (naesteIntervalStartdato - abonnent.Startdato).TotalDays;
                 }
+                    
+
+                if (naesteIntervalStartdato > abonnent.EndegyldigSlutdato()) // Slutdato stopper før simulering
+                {
+                    if (abonnent.Startdato <= simuleringsdato)
+                        antalDageIndtilEndegyldigSlutdato = (abonnent.EndegyldigSlutdato() - simuleringsdato).TotalDays + 1; // + 1 for at få første dag med
+
+                    else
+                        antalDageIndtilEndegyldigSlutdato = (naesteIntervalStartdato - abonnent.Startdato).TotalDays + 1; // + 1 for at få første dag med
+                }
+
+
+                Decimal forhold = (Decimal)(antalDageIndtilEndegyldigSlutdato / antalDageIInterval);
+                produktpris = produktpris * forhold;
+
+                Console.WriteLine("Forholdsmæssigt abonnement - Interval: {0}, Rest: {1}, Pris: {2}", antalDageIInterval, antalDageIndtilEndegyldigSlutdato, produktpris);
             }
             
 
@@ -274,7 +301,7 @@ namespace EcoTest.Controllers
 
             // Abonnement startdato
             abonnentperiodeErAktiv = (SaetTidligereFoerste(abonnent.Startdato) <= simuleringsdato);
-            
+
             // Abonnement slutdato 
             abonnentperiodeErAktiv = abonnentperiodeErAktiv && (abonnent.Slutdato >= simuleringsdato);
 

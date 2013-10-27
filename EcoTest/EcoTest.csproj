@@ -63,10 +63,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Controllers\GenererNySimuleringController.cs" />
+    <Compile Include="Models\Afdeling.cs" />
     <Compile Include="Models\Debitor.cs" />
-    <Compile Include="Controllers\Economic.cs" />
+    <Compile Include="Controllers\EconomicController.cs" />
     <Compile Include="Models\MySQL.cs" />
-    <Compile Include="Models\Produkt.cs" />
+    <Compile Include="Models\Vare.cs" />
     <Compile Include="Models\Abonnent.cs" />
     <Compile Include="Models\Abonnement.cs" />
     <Compile Include="Models\Varelinje.cs" />

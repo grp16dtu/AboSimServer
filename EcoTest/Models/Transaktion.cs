@@ -5,20 +5,20 @@
         public int Aar { get; set; }
         public int Maaned { get; set; }
         public string Debitornummer { get; set; }
-        public string Produktnummer { get; set; }
-        //department
-        //public int ProjectNumber { get; set; }
+        public string Varenummer { get; set; }
+        public int? Afdelingsnummer { get; set; }
         public decimal? Antal { get; set; }
         public decimal Beloeb { get; set; }
 
-        public Transaktion(int year, int month, string debtorNumber, string productNumber, decimal? quantity, decimal amount)
+        public Transaktion(int aar, int maaned, string debitornummer, string varenummer, decimal? antal, decimal beloeb, int? afdelingsnummer)
         {
-            Aar = year;
-            Maaned = month;
-            Debitornummer = debtorNumber;
-            Produktnummer = productNumber;
-            Antal = quantity;
-            Beloeb = amount;
+            Aar = aar;
+            Maaned = maaned;
+            Debitornummer = debitornummer;
+            Varenummer = varenummer; 
+            Antal = antal;
+            Beloeb = beloeb;
+            Afdelingsnummer = afdelingsnummer;
         }
     }
 }

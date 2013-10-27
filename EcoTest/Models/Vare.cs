@@ -1,20 +1,22 @@
 ﻿namespace EcoTest.Models
 {
-    public class Produkt
+    public class Vare
     {
         public decimal Kostpris { get; set; }
         public string Navn { get; set; }
         public string Nummer { get; set; }
         public decimal Salgpris { get; set; }
         public decimal Volume { get; set; }
+        public Afdeling Afdeling { get; set; }
 
-        public Produkt(decimal costPrice, string name, string number, decimal salesPrice, decimal volume)
+        public Vare(decimal costPrice, string name, string number, decimal salesPrice, decimal volume, Afdeling afdeling)
         {
             Kostpris = costPrice;
             Navn = name;
             Nummer = number;
             Salgpris = salesPrice;
             Volume = volume;
+            Afdeling = afdeling;
         }
     }
 }

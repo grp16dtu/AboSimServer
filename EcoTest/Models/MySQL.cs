@@ -47,7 +47,7 @@ namespace EcoTest.Models
 
             foreach (Transaktion transaction in transactions)
             {
-                query += "('" + transaction.Aar + "', '"+transaction.Maaned+"', '"+transaction.Debitornummer+"', '"+transaction.Produktnummer+"', '" +transaction.Antal+"', '"+transaction.Beloeb+"'),";
+                query += "('" + transaction.Aar + "', '"+transaction.Maaned+"', '"+transaction.Debitornummer+"', '"+transaction.Varenummer+"', '" +transaction.Antal+"', '"+transaction.Beloeb+"'),";
             }
             
             query = query.Remove(query.Length - 1, 1);

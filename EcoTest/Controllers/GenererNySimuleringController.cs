@@ -16,7 +16,7 @@ namespace EcoTest.Controllers
             const int ANTAL_SIMULERINGSMAANEDER = 12;
             const int BRUGERINDEX = 1;
 
-            Economic economic = new Economic(aftalenummer, brugernavn, kodeord);
+            EconomicController economic = new EconomicController(aftalenummer, brugernavn, kodeord);
             economic.HentDataFraEconomic();
 
             List<Abonnement> haegtedeAbonnementer = economic.ForbindData();
@@ -30,7 +30,7 @@ namespace EcoTest.Controllers
 
             foreach (var transaction in transaktioner)
             {
-                Console.WriteLine("Dato: " + transaction.Aar + transaction.Maaned + ", DN: " + transaction.Debitornummer + ", PN: " + transaction.Produktnummer + ", Ant: " + transaction.Antal + ", Sum: " + transaction.Beloeb);
+                Console.WriteLine("Dato: {0}{1}, DN: {2}, PN: {3}, Ant: {4}, Sum: {5}, Afd: {6}", transaction.Aar, transaction.Maaned, transaction.Debitornummer, transaction.Varenummer, transaction.Antal, transaction.Beloeb, transaction.Afdelingsnummer);
             }
 
             Console.ReadLine();
