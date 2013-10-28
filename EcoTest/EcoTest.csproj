@@ -66,6 +66,7 @@
     <Compile Include="Models\Afdeling.cs" />
     <Compile Include="Models\Debitor.cs" />
     <Compile Include="Controllers\EconomicController.cs" />
+    <Compile Include="Models\EconomicUdtraek.cs" />
     <Compile Include="Models\MySQL.cs" />
     <Compile Include="Models\Vare.cs" />
     <Compile Include="Models\Abonnent.cs" />

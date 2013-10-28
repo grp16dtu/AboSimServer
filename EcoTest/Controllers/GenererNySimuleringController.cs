@@ -16,11 +16,10 @@ namespace EcoTest.Controllers
             const int ANTAL_SIMULERINGSMAANEDER = 12;
             const int BRUGERINDEX = 1;
 
-            EconomicController economic = new EconomicController(aftalenummer, brugernavn, kodeord);
-            economic.HentDataFraEconomic();
-
-            List<Abonnement> haegtedeAbonnementer = economic.ForbindData();
-            List<Transaktion> transaktioner = economic.GenererTransaktioner(haegtedeAbonnementer, ANTAL_SIMULERINGSMAANEDER, BRUGERINDEX);
+            EconomicController economicController = new EconomicController(aftalenummer, brugernavn, kodeord);
+            EconomicUdtraek economicUdtraek = economicController.HentData();
+            List<Abonnement> abonnementer = economicController.ForbindData(economicUdtraek);
+            List<Transaktion> transaktioner = economicController.GenererTransaktioner(abonnementer, ANTAL_SIMULERINGSMAANEDER, BRUGERINDEX);
 
             MySQL mySql = new MySQL();
             //mySql.InsertTransactions(transaktioner);

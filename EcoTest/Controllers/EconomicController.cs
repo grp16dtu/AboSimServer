@@ -17,14 +17,6 @@ namespace EcoTest.Controllers
         // SOAP klient
         private readonly EconomicWebServiceSoapClient _economicKlient;
 
-        // Rå data fra e-conomic
-        private SubscriptionData[] _abonnementerData;
-        private SubscriberData[] _abonnenterData;
-        private SubscriptionLineData[] _varelinjerData;
-        private ProductData[] _produkterData;
-        private DebtorData[] _debitorerData;
-        private DepartmentData[] _afdelingerData;
-      
         public EconomicController(int aftalenummer, string brugernavn, string kodeord)
         {
             this._aftalenummer = aftalenummer;
@@ -33,13 +25,13 @@ namespace EcoTest.Controllers
             this._economicKlient = new EconomicWebServiceSoapClient();
         }
 
-        private void Forbind()
+        private void ForbindTilEconomic()
         {
             ((BasicHttpBinding)_economicKlient.Endpoint.Binding).AllowCookies = true;
             _economicKlient.Connect(_aftalenummer, _brugernavn, _kodeord);
         }
 
-        private void Afbryd()
+        private void AfbrydFraEconomic()
         {
             _economicKlient.Disconnect();
         }
@@ -47,47 +39,45 @@ namespace EcoTest.Controllers
         /// <summary>
         /// Henter data fra e-conomic. Data er gemt internt og linkes først sammen ved kørsel af "ForbindData".
         /// </summary>
-        public void HentDataFraEconomic()
+        public EconomicUdtraek HentData()
         {
-            Forbind();
+             ForbindTilEconomic();
  
             // Abonnementer
             SubscriptionHandle[] abonnementHandlers = _economicKlient.Subscription_GetAll();
-            _abonnementerData = _economicKlient.Subscription_GetDataArray(abonnementHandlers);
+            SubscriptionData[] abonnementerData = _economicKlient.Subscription_GetDataArray(abonnementHandlers);
 
             // Abonnenter
             SubscriberHandle[] abonnentHandlers = _economicKlient.Subscriber_FindBySubscriptonList(abonnementHandlers);
-            _abonnenterData = _economicKlient.Subscriber_GetDataArray(abonnentHandlers);
+            SubscriberData[] abonnenterData = _economicKlient.Subscriber_GetDataArray(abonnentHandlers);
 
             // Varelinjer
             SubscriptionLineHandle[] varelinjeHandlers = _economicKlient.SubscriptionLine_FindBySubscriptonList(abonnementHandlers);
-            _varelinjerData = _economicKlient.SubscriptionLine_GetDataArray(varelinjeHandlers);
-
+            SubscriptionLineData[] varelinjerData = _economicKlient.SubscriptionLine_GetDataArray(varelinjeHandlers);
 
             // Produkter
-            ProductHandle[] _produktHandlers = HentProduktHandlers(_varelinjerData); // Manuel opsamling af "handlers"
-            _produkterData = _economicKlient.Product_GetDataArray(_produktHandlers);
+            ProductHandle[] produktHandlers = HentProduktHandlers(varelinjerData); // Manuel opsamling af "handlers"
+            ProductData[] produkterData = _economicKlient.Product_GetDataArray(produktHandlers);
         
             //Debitorer
-            DebtorHandle[] debitorHandlers = HentDebitorHandlers(_abonnenterData); // Manuel opsamling af "handlers"
-            _debitorerData = _economicKlient.Debtor_GetDataArray(debitorHandlers);
+            DebtorHandle[] debitorHandlers = HentDebitorHandlers(abonnenterData); // Manuel opsamling af "handlers"
+            DebtorData[] debitorerData = _economicKlient.Debtor_GetDataArray(debitorHandlers);
 
             // Afdelinger
-            //DepartmentHandle[] afdelingerHandlers = HentAfdelingHandlers(_produkterData); // Manuel opsamling af "handlers"
             DepartmentHandle[] afdelingerHandlers = _economicKlient.Department_GetAll();
-            _afdelingerData = _economicKlient.Department_GetDataArray(afdelingerHandlers);
+            DepartmentData[] afdelingerData = _economicKlient.Department_GetDataArray(afdelingerHandlers);
 
-            Afbryd();
+            AfbrydFraEconomic();
 
+            return new EconomicUdtraek(abonnementerData, abonnenterData, varelinjerData, produkterData, debitorerData, afdelingerData);
         }
 
         /// <summary>
         /// Forbinder data hentet fra e-conomic. Returnerer en liste af abonnementer med linkede varelinjer og abonnenter.
         /// </summary>
         /// <returns></returns>
-        public List<Abonnement> ForbindData()
+        public List<Abonnement> ForbindData(EconomicUdtraek economicDAO)
         {
-            //
             // Konverter e-conomic dataobjekter til "egne" dataobjekter. Alt data lægges i opslag og køres kun igennem een gang ved konvertering.
             Dictionary<int, Abonnement> abonnementopslag = new Dictionary<int, Abonnement>();
             Dictionary<int, Abonnent> abonnentopslag = new Dictionary<int, Abonnent>();
@@ -96,30 +86,30 @@ namespace EcoTest.Controllers
             Dictionary<string, Vare> produktopslag = new Dictionary<string, Vare>();
             Dictionary<int, Varelinje> varelinjeopslag = new Dictionary<int, Varelinje>();
 
-            foreach (var abonnementData in _abonnementerData)
+            foreach (var abonnementData in economicDAO.Abonnementer)
             {
                 abonnementopslag.Add(abonnementData.Id, new Abonnement(abonnementData.Id, abonnementData.Name, abonnementData.Number, abonnementData.CalendarYearBasis, abonnementData.SubscriptionInterval.ToString(), abonnementData.Collection.ToString()));
             }
 
-            foreach (var afdelingsData in _afdelingerData)
+            foreach (var afdelingsData in economicDAO.Afdelinger)
             {
                 afdelingsopslag.Add(afdelingsData.Number, new Afdeling(afdelingsData.Number, afdelingsData.Name));
             }
 
-            foreach (var debitorData in _debitorerData)
+            foreach (var debitorData in economicDAO.Debitorer)
             {
                 if (!debitoropslag.ContainsKey(debitorData.Number))
                     debitoropslag.Add(debitorData.Number, new Debitor(debitorData.Address, debitorData.Balance, debitorData.CINumber, debitorData.City, debitorData.Country, debitorData.CreditMaximum, debitorData.Ean, debitorData.Email, debitorData.Name, debitorData.Number, debitorData.PostalCode, debitorData.TelephoneAndFaxNumber));
             }
 
-            foreach (var abonnentData in _abonnenterData)
+            foreach (var abonnentData in economicDAO.Abonnenter)
             {
                 Abonnent abonnent = new Abonnent(abonnentData.SubscriberId, debitoropslag[abonnentData.DebtorHandle.Number], abonnentData.DiscountAsPercent, abonnentData.DiscountExpiryDate, abonnentData.EndDate, abonnentData.ExpiryDate, abonnentData.QuantityFactor, abonnentData.PriceIndex, abonnentData.RegisteredDate, abonnentData.SpecialPrice, abonnentData.StartDate);
                 abonnentopslag.Add(abonnentData.SubscriberId, abonnent);
                 abonnementopslag[abonnentData.SubscriptionHandle.Id].Abonnenter.Add(abonnent);
             }
 
-            foreach (var produktData in _produkterData)
+            foreach (var produktData in economicDAO.Produkter)
             {
                 // Evt. afdeling
                 Afdeling afdeling = null;
@@ -130,7 +120,7 @@ namespace EcoTest.Controllers
                     produktopslag.Add(produktData.Handle.Number, new Vare(produktData.CostPrice, produktData.Name, produktData.Number, produktData.SalesPrice, produktData.Volume, afdeling));
             }
 
-            foreach (var varelinjeData in _varelinjerData)
+            foreach (var varelinjeData in economicDAO.Varelinjer)
             {
                 //Evt. afdeling
                 Afdeling afdeling = null;
