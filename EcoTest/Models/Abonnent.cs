@@ -11,13 +11,13 @@ namespace EcoTest.Models
         public DateTime Startdato { get; set; }
         public DateTime Slutdato { get; set; }
         public DateTime Registreringsdato { get; set; }
-        public DateTime Ophoer { get; set; }
+        public DateTime? Ophoer { get; set; }
         public decimal? Antalsfaktor { get; set; }
         public decimal? Prisindex { get; set; }
         public decimal? Saerpris { get; set; }
         
 
-        public Abonnent(int subscriberId, Debitor debtor, decimal? discountAsPercent, DateTime? discountExpiryDate, DateTime endDate, DateTime expiryDate, decimal? quantityFactor, decimal? priceIndex, DateTime registeredDate, decimal? specialPrice, DateTime startDate)
+        public Abonnent(int subscriberId, Debitor debtor, decimal? discountAsPercent, DateTime? discountExpiryDate, DateTime endDate, DateTime? expiryDate, decimal? quantityFactor, decimal? priceIndex, DateTime registeredDate, decimal? specialPrice, DateTime startDate)
         {
             AbonnentId = subscriberId;
             Debitor = debtor;
@@ -35,7 +35,7 @@ namespace EcoTest.Models
         public DateTime EndegyldigSlutdato()
         {
             if (Ophoer != null && Ophoer < Slutdato)    
-                return Ophoer;
+                return (DateTime)Ophoer;
             else
                 return Slutdato;
         }

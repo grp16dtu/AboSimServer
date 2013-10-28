@@ -114,7 +114,7 @@ namespace EcoTest.Controllers
 
             foreach (var abonnentData in _abonnenterData)
             {
-                Abonnent abonnent = new Abonnent(abonnentData.SubscriberId, debitoropslag[abonnentData.DebtorHandle.Number], abonnentData.DiscountAsPercent, abonnentData.DiscountExpiryDate, abonnentData.EndDate, abonnentData.EndDate, abonnentData.QuantityFactor, abonnentData.PriceIndex, abonnentData.RegisteredDate, abonnentData.SpecialPrice, abonnentData.StartDate);
+                Abonnent abonnent = new Abonnent(abonnentData.SubscriberId, debitoropslag[abonnentData.DebtorHandle.Number], abonnentData.DiscountAsPercent, abonnentData.DiscountExpiryDate, abonnentData.EndDate, abonnentData.ExpiryDate, abonnentData.QuantityFactor, abonnentData.PriceIndex, abonnentData.RegisteredDate, abonnentData.SpecialPrice, abonnentData.StartDate);
                 abonnentopslag.Add(abonnentData.SubscriberId, abonnent);
                 abonnementopslag[abonnentData.SubscriptionHandle.Id].Abonnenter.Add(abonnent);
             }
@@ -183,7 +183,7 @@ namespace EcoTest.Controllers
                                 Console.WriteLine("Varelinje - Abonnentperiode: {1} - {2}, SimDato: {3}",varelinje.Produkt.Navn, abonnent.Startdato.ToShortDateString(), abonnent.Slutdato.ToShortDateString(), simuleringsdato.ToShortDateString());
                                 Console.WriteLine(simuleringsdato.ToShortDateString());
 
-                                decimal produktpris = BeregnProduktpris(abonnement, varelinje, abonnent, simuleringsdato,!ErRabatUdlobet(abonnent.DatoRabatudloeb, simuleringsdato), brugerIndex);
+                                decimal produktpris = BeregnProduktpris(abonnement, varelinje, abonnent, simuleringsdato,ErRabatUdlobet(abonnent.DatoRabatudloeb, simuleringsdato), brugerIndex);
                                 decimal? produktantal = BeregnProduktantal(varelinje, abonnent);
                                 decimal varelinjepris = (decimal)(produktpris * produktantal);
                                 int? afdelingsnummer = HentAfdelingsnummer(varelinje);                               
@@ -243,39 +243,6 @@ namespace EcoTest.Controllers
             // Fuld opkrævning 
             decimal varepris = varelinje.Produkt.Salgpris;
 
-            // Forholdsmæssig opkrævning 
-            if (abonnement.OpkraevesForholdsmaessigt())
-            {
-                DateTime naesteIntervalStartdato = TilfoejInterval(simuleringsdato, abonnement.Interval);
-
-                double antalDageIndtilEndegyldigSlutdato = (naesteIntervalStartdato - simuleringsdato).TotalDays;
-                double antalDageIInterval = (naesteIntervalStartdato - simuleringsdato).TotalDays;
-                
-                // Hvis startdato er senere end simuleringsdato
-                if (abonnent.Startdato > simuleringsdato)
-                    antalDageIndtilEndegyldigSlutdato = (naesteIntervalStartdato - abonnent.Startdato).TotalDays;
-                
-                    
-                // Hvis nuværende simuleringsinterval overskrider endegyldig slutdato for abonnent
-                if (naesteIntervalStartdato > abonnent.EndegyldigSlutdato()) 
-                {
-                    // Hvis simuleringsdato er senere end abonnentens startdato
-                    if (abonnent.Startdato <= simuleringsdato)
-                        antalDageIndtilEndegyldigSlutdato = (abonnent.EndegyldigSlutdato() - simuleringsdato).TotalDays;
-
-                    // Hvis simuleringsdatoen er tidligere end startdatoen
-                    else
-                        antalDageIndtilEndegyldigSlutdato = (naesteIntervalStartdato - abonnent.Startdato).TotalDays; 
-                }
-
-
-                Decimal forhold = (Decimal)(antalDageIndtilEndegyldigSlutdato / antalDageIInterval);
-                varepris = varepris * forhold;
-
-                Console.WriteLine("Forholdsmæssigt abonnement - Interval: {0}, Rest: {1}, Pris: {2}", antalDageIInterval, antalDageIndtilEndegyldigSlutdato, varepris);
-            }
-            
-
             // Særlig varelinje produktpris
             if (varelinje.Saerpris != null)
                 varepris = Convert.ToDecimal(varelinje.Saerpris);
@@ -283,6 +250,39 @@ namespace EcoTest.Controllers
             // Særlig abonnent produktpris
             if (abonnent.Saerpris != null)
                 varepris = Convert.ToDecimal(abonnent.Saerpris);
+
+            // Forholdsmæssig opkrævning 
+            if (abonnement.OpkraevesForholdsmaessigt())
+            {
+                DateTime naesteIntervalStartdato = TilfoejInterval(simuleringsdato, abonnement.Interval);
+
+                double antalDageIInterval = (naesteIntervalStartdato - simuleringsdato).TotalDays;
+                double antalDageIndtilEndegyldigSlutdato = antalDageIInterval;
+                
+                // Hvis startdato er senere end simuleringsdato
+                if (abonnent.Startdato > simuleringsdato)
+                    antalDageIndtilEndegyldigSlutdato = (naesteIntervalStartdato - abonnent.Startdato).TotalDays + 1;
+                
+                    
+                // Hvis nuværende simuleringsinterval overskrider endegyldig slutdato for abonnent
+                if (naesteIntervalStartdato > abonnent.EndegyldigSlutdato()) 
+                {
+                    // Hvis simuleringsdato er senere end abonnentens startdato
+                    if (abonnent.Startdato <= simuleringsdato)
+                        antalDageIndtilEndegyldigSlutdato = (abonnent.EndegyldigSlutdato() - simuleringsdato).TotalDays + 1;
+
+                    // Hvis simuleringsdatoen er tidligere end startdatoen
+                    else
+                        antalDageIndtilEndegyldigSlutdato = (naesteIntervalStartdato - abonnent.Startdato).TotalDays + 1; 
+                }
+
+                //antalDageIndtilEndegyldigSlutdato++;
+                Decimal forhold = (Decimal)(antalDageIndtilEndegyldigSlutdato / antalDageIInterval);
+                varepris = varepris * forhold;
+
+                Console.WriteLine("Forhold: " + forhold);
+                Console.WriteLine("Forholdsmæssigt abonnement - Interval: {0}, Rest: {1}, Pris: {2}", antalDageIInterval, antalDageIndtilEndegyldigSlutdato, varepris);
+            }
 
             // Eventuel rabat
             if (abonnent.RabatSomProcent != null && !rabatErUdloebet)
@@ -303,10 +303,11 @@ namespace EcoTest.Controllers
             abonnentperiodeErAktiv = (SaetTidligereFoerste(abonnent.Startdato) <= simuleringsdato);
 
             // Abonnement slutdato 
-            abonnentperiodeErAktiv = abonnentperiodeErAktiv && (abonnent.Slutdato >= simuleringsdato);
+            abonnentperiodeErAktiv = abonnentperiodeErAktiv && (abonnent.EndegyldigSlutdato() >= simuleringsdato);
+            //abonnentperiodeErAktiv = abonnentperiodeErAktiv && (abonnent.Slutdato >= simuleringsdato);
 
             // Abonnent udløbsdato 
-            abonnentperiodeErAktiv = abonnentperiodeErAktiv && (abonnent.Ophoer >= simuleringsdato);
+            //abonnentperiodeErAktiv = abonnentperiodeErAktiv && (abonnent.Ophoer >= simuleringsdato);
             return abonnentperiodeErAktiv;
         }
 
