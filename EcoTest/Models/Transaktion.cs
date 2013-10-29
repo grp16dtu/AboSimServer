@@ -1,19 +1,18 @@
-﻿namespace EcoTest.Models
+﻿using System;
+namespace EcoTest.Models
 {
     public class Transaktion
     {
-        public int Aar { get; set; }
-        public int Maaned { get; set; }
+        public DateTime AarMaaned { get; set; }
         public string Debitornummer { get; set; }
         public string Varenummer { get; set; }
         public int? Afdelingsnummer { get; set; }
         public decimal? Antal { get; set; }
         public decimal Beloeb { get; set; }
 
-        public Transaktion(int aar, int maaned, string debitornummer, string varenummer, decimal? antal, decimal beloeb, int? afdelingsnummer)
+        public Transaktion(DateTime aarMaaned, string debitornummer, string varenummer, decimal? antal, decimal beloeb, int? afdelingsnummer)
         {
-            Aar = aar;
-            Maaned = maaned;
+            AarMaaned = new DateTime(aarMaaned.Year, aarMaaned.Month, 1);
             Debitornummer = debitornummer;
             Varenummer = varenummer; 
             Antal = antal;

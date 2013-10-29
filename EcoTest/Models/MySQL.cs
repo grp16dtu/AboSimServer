@@ -40,14 +40,24 @@ namespace EcoTest.Models
             MySqlConnection.Close();
         }
 
-        public void InsertTransactions(List<Transaktion> transactions )
+        private void ToemTransaktioner()
         {
             OpenConnection();
-            string query = "INSERT INTO transactions (year, month, debtorNumber, productNumber, quantity, amount) VALUES";
+            string query = "TRUNCATE TABLE transactions";
+            MySqlCommand cmd = new MySqlCommand(query, MySqlConnection);
+            cmd.ExecuteNonQuery();
+            CloseConnection();
+        }
+
+        public void InsertTransactions(List<Transaktion> transactions )
+        {
+            ToemTransaktioner();
+            OpenConnection();
+            string query = "INSERT INTO transactions (yearMonth, departmentNumber, debtorNumber, productNumber, quantity, amount) VALUES";
 
             foreach (Transaktion transaction in transactions)
             {
-                query += "('" + transaction.Aar + "', '"+transaction.Maaned+"', '"+transaction.Debitornummer+"', '"+transaction.Varenummer+"', '" +transaction.Antal+"', '"+transaction.Beloeb+"'),";
+                query += "('" + transaction.AarMaaned.ToString("yyyyMMdd") + "', '" + transaction.Afdelingsnummer + "', '" + transaction.Debitornummer + "', '" + transaction.Varenummer + "', '" + transaction.Antal + "', '" + transaction.Beloeb + "'),";
             }
             
             query = query.Remove(query.Length - 1, 1);
@@ -58,20 +68,29 @@ namespace EcoTest.Models
             CloseConnection();
         }
 
-        public void HentAlt()
+        public List<Datapunkt> HentAlt()
         {
+            List<Datapunkt> datapunkter = new List<Datapunkt>();
             OpenConnection();
-            string query = "SELECT * FROM transactions";
+            string query = "SELECT yearMonth, Sum( quantity ) AS antal, SUM( amount ) AS sum FROM transactions GROUP BY yearMonth  ORDER BY yearMonth ASC LIMIT 10";
 
             MySqlCommand cmd = new MySqlCommand(query, MySqlConnection);
             MySqlDataReader dataReader = cmd.ExecuteReader();
 
             while (dataReader.Read())
             {
-                Console.WriteLine(dataReader["year"]);
+                DateTime aarMaaned = DateTime.Parse(dataReader["yearMonth"].ToString());
+                decimal antal = (decimal)dataReader["antal"];
+                decimal sum = (decimal)dataReader["sum"];
+
+
+                Datapunkt datapunkt = Datapunkt.TidDKK(aarMaaned, antal, sum);
+                datapunkter.Add(datapunkt);
             }
 
             CloseConnection();
+
+            return datapunkter;
         }
     }
 }

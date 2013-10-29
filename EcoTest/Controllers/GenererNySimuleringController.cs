@@ -35,14 +35,14 @@ namespace EcoTest.Controllers
                 MySQL mySql = new MySQL();
                 mySql.InsertTransactions(transaktioner);
 
-                mySql.HentAlt();
+                List<Datapunkt> datapunkter =  mySql.HentAlt();
 
                 //Udlæs transaktioner
-                Console.WriteLine(transaktioner.Count() + " transaktion(er) over " + antalSimuleringsmaaneder + " simuleringsmåned(er)");
+                Console.WriteLine("Transaktioner: " + transaktioner.Count() + " transaktion(er) over " + antalSimuleringsmaaneder + " simuleringsmåned(er)");
 
                 foreach (var transaction in transaktioner)
                 {
-                    Console.WriteLine("Dato: {0}{1}, DN: {2}, PN: {3}, Ant: {4}, Sum: {5}, Afd: {6}", transaction.Aar, transaction.Maaned, transaction.Debitornummer, transaction.Varenummer, transaction.Antal, transaction.Beloeb, transaction.Afdelingsnummer);
+                    Console.WriteLine("Dato: {0}, DN: {2}, PN: {3}, Ant: {4}, Sum: {5}, Afd: {6}", transaction.AarMaaned.ToShortDateString(), transaction.AarMaaned, transaction.Debitornummer, transaction.Varenummer, transaction.Antal, transaction.Beloeb, transaction.Afdelingsnummer);
                 }
 
                 Console.ReadLine();
@@ -222,7 +222,7 @@ namespace EcoTest.Controllers
                                 decimal? produktantal = BeregnProduktantal(varelinje, abonnent);
                                 decimal varelinjepris = (decimal)(produktpris * produktantal);
                                 int? afdelingsnummer = HentAfdelingsnummer(varelinje);                               
-                                transaktioner.Add(new Transaktion(simuleringsdato.Year, simuleringsdato.Month, abonnent.Debitor.Nummer, varelinje.Produkt.Nummer, produktantal, varelinjepris, afdelingsnummer));
+                                transaktioner.Add(new Transaktion(simuleringsdato, abonnent.Debitor.Nummer, varelinje.Produkt.Nummer, produktantal, varelinjepris, afdelingsnummer));
                             }
                         }
                     }
