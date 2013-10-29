@@ -15,9 +15,9 @@ namespace EcoTest.Models
 
         public MySQL()
         {
-            server = "mysql8.gigahost.dk";
-            database = "redlaz_ooad";
-            userName = "redlaz";
+            server = "mysql23.unoeuro.com";
+            database = "redlaz_dk_db";
+            userName = "redlaz_dk";
             password = "Iben1234";
             Initialize();
         }
@@ -56,7 +56,22 @@ namespace EcoTest.Models
             MySqlCommand cmd = new MySqlCommand(query, MySqlConnection);    
             cmd.ExecuteNonQuery();
             CloseConnection();
-            
+        }
+
+        public void HentAlt()
+        {
+            OpenConnection();
+            string query = "SELECT * FROM transactions";
+
+            MySqlCommand cmd = new MySqlCommand(query, MySqlConnection);
+            MySqlDataReader dataReader = cmd.ExecuteReader();
+
+            while (dataReader.Read())
+            {
+                Console.WriteLine(dataReader["year"]);
+            }
+
+            CloseConnection();
         }
     }
 }

@@ -33,7 +33,9 @@ namespace EcoTest.Controllers
                 List<Transaktion> transaktioner = GenererTransaktioner(abonnementer, antalSimuleringsmaaneder, brugerIndex);
 
                 MySQL mySql = new MySQL();
-                //mySql.InsertTransactions(transaktioner);
+                mySql.InsertTransactions(transaktioner);
+
+                mySql.HentAlt();
 
                 //Udlæs transaktioner
                 Console.WriteLine(transaktioner.Count() + " transaktion(er) over " + antalSimuleringsmaaneder + " simuleringsmåned(er)");
